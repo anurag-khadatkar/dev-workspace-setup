@@ -12,17 +12,56 @@
 # early exit on errors
 set -e
 
-run_mode="auto"
+parse_run_mode() {
+    case "$1" in
+        -w)
+            echo "wizard"
+            ;;
+        -m)
+            echo "manual"
+            ;;
+        -h)
+            echo "Usage: ./setup-mac.sh [-m]"
+            echo "  -m: manual mode - where each step is executed one by one and user can choose to skip or continue"
+            echo "  -w: wizard mode - allow choosing whether to skip a step"
+            return 0
+            ;;
+        "")
+            echo "auto"
+            ;;
+        *)
+            echo "auto"
+            ;;
+    esac
+}
 
-if [ "$1" = "-w" ]; then
-  run_mode="wizard"
-elif [ "$1" = "-m" ]; then
-    run_mode="manual"
-elif [ "$1" = "-h" ]; then
-  echo "Usage: ./setup-mac.sh [-m]"
-  echo "  -m: manual mode - where each step is executed one by one and user can choose to skip or continue"
-  exit 0
-fi
+main() {
+    case "${1:-}" in
+        -w)
+            run_mode="wizard"
+            ;;
+        -m)
+            run_mode="manual"
+            ;;
+        -h)
+            echo "Usage: ./setup-mac.sh [-m]"
+            echo "  -m: manual mode - where each step is executed one by one and user can choose to skip or continue"
+            echo "  -w: wizard mode - allow choosing whether to skip a step"
+            return 0
+            ;;
+        *)
+            run_mode="auto"
+            ;;
+    esac
+
+    echo "Running setup script in $run_mode mode..."
+
+    if [ "$run_mode" = "manual" ]; then
+        manual_menu
+    else
+        run_sequence
+    fi
+}
 
 # check before executing steps if user wants to skip the step or not
 # In default mode, all steps will be executed. In wizard mode, user can choose to skip a step.
@@ -207,17 +246,17 @@ setup_essential_programs() {
         return
     fi
 
-    if !skip_step "VS Code setup"; then
+    if ! skip_step "VS Code setup"; then
         echo "Setting up VS Code..."
         brew install --cask visual-studio-code
     fi
 
-    if !skip_step "Postman setup"; then
+    if ! skip_step "Postman setup"; then
         echo "Setting up Postman..."
         brew install --cask postman
     fi
 
-    if !skip_step "FDM setup"; then
+    if ! skip_step "FDM setup"; then
         echo "Setting up Free Download Manager..."
         brew install --cask free-download-manager
     fi
@@ -339,10 +378,7 @@ manual_menu() {
     run_manual $step
 }
 
-echo "Running setup script in $run_mode mode..."
-
-if [ "$run_mode" = "manual" ]; then
-    manual_menu
-else
-    run_sequence
+# The script should only execute setup steps when it is run directly, not when sourced by tests.
+if [ "${0##*/}" = "setup-mac.sh" ] || [ "$0" = "./setup-mac.sh" ] || [ "$0" = "setup-mac.sh" ]; then
+    main "$@"
 fi
